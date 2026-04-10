@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive To-Do List</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    .container {
+      width: 400px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(15px);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      color: #fff;
+    }
+
+    h2 { text-align: center; }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+    }
+
+    #searchInput {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .add-btn { background: #00c9a7; color: white; }
+
+    ul { list-style: none; padding: 0; }
+
+    li {
+      background: rgba(255,255,255,0.2);
+      padding: 10px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      transition: all 0.3s ease;
+    }
+
+    li.completed span {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    .task-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .task-text { cursor: pointer; }
+
+    .actions button {
+      margin-left: 5px;
+      font-size: 12px;
+      padding: 6px 8px;
+    }
+
+    .edit-btn { background: #ffc107; }
+    .delete-btn { background: #ff4d4d; color: white; }
+
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>✨ My To-Do List</h2>
+
+    <div class="input-group">
+      <input type="text" id="taskInput" placeholder="Add a new task..." />
+      <button class="add-btn" onclick="addTask()">Add</button>
+    </div>
+
+    <!-- 🔍 Search Bar -->
+    <input type="text" id="searchInput" placeholder="Search tasks..." onkeyup="searchTask()" />
+
+    <ul id="taskList"></ul>
+  </div>
+
+  <script>
+    let tasks = [];
+
+    function saveTasks() {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function loadTasks() {
+      const data = localStorage.getItem('tasks');
+      if (data) {
+        tasks = JSON.parse(data);
+        tasks.forEach(task => renderTask(task));
+      }
+    }
+
+    function addTask() {
+      const input = document.getElementById('taskInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const task = { id: Date.now(), text, completed: false };
+      tasks.push(task);
+      renderTask(task);
+      saveTasks();
+      input.value = '';
+    }
+
+    // Enter key support
+    document.getElementById('taskInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addTask();
+    });
+
+    function renderTask(task) {
+      const li = document.createElement('li');
+      li.setAttribute('data-id', task.id);
+
+      if (task.completed) li.classList.add('completed');
+
+      const left = document.createElement('div');
+      left.className = 'task-left';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = task.completed;
+      checkbox.onchange = () => toggleComplete(task.id, li);
+
+      const span = document.createElement('span');
+      span.textContent = task.text;
+      span.className = 'task-text';
+
+      left.appendChild(checkbox);
+      left.appendChild(span);
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.textContent = 'Edit';
+      editBtn.className = 'edit-btn';
+      editBtn.onclick = () => editTask(task.id, span);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.onclick = () => deleteTask(task.id, li);
+
+      actions.appendChild(editBtn);
+      actions.appendChild(deleteBtn);
+
+      li.appendChild(left);
+      li.appendChild(actions);
+
+      document.getElementById('taskList').appendChild(li);
+    }
+
+    function toggleComplete(id, li) {
+      tasks = tasks.map(task => {
+        if (task.id === id) task.completed = !task.completed;
+        return task;
+      });
+      li.classList.toggle('completed');
+      saveTasks();
+    }
+
+    function deleteTask(id, li) {
+      tasks = tasks.filter(task => task.id !== id);
+      li.remove();
+      saveTasks();
+    }
+
+    function editTask(id, span) {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = span.textContent;
+      input.style.flex = '1';
+
+      span.replaceWith(input);
+      input.focus();
+
+      input.onblur = () => saveEdit(id, input);
+      input.onkeydown = (e) => {
+        if (e.key === 'Enter') input.blur();
+      };
+    }
+
+    function saveEdit(id, input) {
+      const newText = input.value.trim();
+      if (!newText) {
+        input.focus();
+        return;
+      }
+
+      tasks = tasks.map(task => {
+        if (task.id === id) task.text = newText;
+        return task;
+      });
+
+      const span = document.createElement('span');
+      span.textContent = newText;
+      span.className = 'task-text';
+
+      input.replaceWith(span);
+      saveTasks();
+    }
+
+    // 🔍 Search Function
+    function searchTask() {
+      const searchValue = document.getElementById('searchInput').value.toLowerCase();
+      const tasksList = document.querySelectorAll('#taskList li');
+
+      tasksList.forEach(li => {
+        const text = li.querySelector('.task-text').textContent.toLowerCase();
+
+        if (text.includes(searchValue)) {
+          li.style.display = 'flex';
+        } else {
+          li.style.display = 'none';
+        }
+      });
+    }
+
+    loadTasks();
+  </script>
+</body>
+</html>
